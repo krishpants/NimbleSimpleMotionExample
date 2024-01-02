@@ -27,6 +27,9 @@ void loop() {
 }
 
 // Do not call! For reference only!
+// These are the main functions, once you understand how they work you can effectivly delete everything bellow and start your own project.
+// !!! EXCEPT sendValuesToNimble(); < Leave that in
+
 void exampleLibraryFunctions(){
   return;
   // Set Motion Variables
