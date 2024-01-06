@@ -75,7 +75,7 @@ void runMainOperation() {
       // You might link speed to the encoder, or perhaps randomise values here.
       motion.setMinPosition(-200); // -1000 to 1000
       motion.setMaxPosition(800); // -1000 to 1000
-      motion.setSpeed(60); // 0 - 100
+      motion.setSpeed(30); // 0 - 100
       runningStage ++;
       break;
     case 2:
@@ -93,7 +93,14 @@ void runMainOperation() {
     case 3:
       // Here is where the motion is generated.
       // generateSineWave() constantly updates the position in a sin wave, this is then extracted in sendValuesToNimble() and sent to the actuator
-      motion.generateSineWave();
+      // Check if the loop count is even or odd
+      if (motion.getLoopCount() % 2 == 0) {
+          // On even loop counts, apply the "purr" texture overlay
+          motion.generateSineWave("purr");
+      } else {
+          // On odd loop counts, don't apply any overlay
+          motion.generateSineWave();
+      }
       // The library keeps a loop count that increments at the bottom of every stroke.
       // In this example we wait until the counter gets to 20 and then move to the next step.
       // because the counter updates at the bottom of the stroke, moving on as soon as it changes stopped the unit in an optimal posiiton to prevent fall off.
@@ -164,7 +171,7 @@ void checkButtonForInput() {
     // Update button value only if it has been stable for debounceDelay time
     if (reading != buttonValue) {
       buttonValue = reading;
-      if (buttonValue == 1){
+      if (buttonValue == 0){
         // button has been released < Do Something here
         functionForButtonPushed();
       } else {

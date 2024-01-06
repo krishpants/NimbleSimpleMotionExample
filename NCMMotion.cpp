@@ -14,6 +14,11 @@ void NCMMotion::begin() {
   // Initialize the library, if needed
 }
 
+
+//************************************************************
+//********************** Setting Setters *********************
+//************************************************************
+
 void NCMMotion::setMinPosition(long position) {
   targetMinPosition = constrain(position, -1000, 1000);
 }
@@ -26,7 +31,11 @@ void NCMMotion::setSpeed(int speed) {
   frequency = mapSpeedToFrequency(speed);
 }
 
-void NCMMotion::generateSineWave() {
+//***********************************************************
+//********************** Main Functions *********************
+//***********************************************************
+
+void NCMMotion::generateSineWave(const String& overlay) {
   static float prevSineWave = 2.0; // Initialize to a value outside the sine wave range
   const float minThreshold = -0.99; // Threshold close to the minimum value
   static unsigned long lastGenUpdateTime;
@@ -53,7 +62,12 @@ void NCMMotion::generateSineWave() {
     loopCount++;
   }
   prevSineWave = sineVal;
-  positionCommand = output;
+  // Get the vibration overlay value
+  float vibrationOverlay = calculateVibrationOverlay(overlay, phase, timeElapsed);
+  // Add the overlay to the primary wave output
+  positionCommand = output + vibrationOverlay;
+  // Clamp positionCommand to the range [-1000, 1000]
+  positionCommand = max(static_cast<long int>(-1000), min(static_cast<long int>(1000), positionCommand));
 }
 
 void NCMMotion::easeToBasePosition() {
@@ -86,6 +100,46 @@ void NCMMotion::easeToBasePosition() {
   }
 }
 
+//**************************************************************
+//********************** Vibration Modes ***********************
+//**************************************************************
+
+float NCMMotion::calculateVibrationOverlay(const String& overlay, float phase, float timeElapsed) {
+    
+    // A simple strong vibration
+    if (overlay == "strong") {
+          // Vibration calculation within the specified phase range
+          float vibrationAmplitude = 200;
+          float vibrationFrequency = 50;
+          return calculateVibrationWave(vibrationAmplitude, vibrationFrequency, timeElapsed);
+    }
+
+    // A more advanced modulated purr at the end of the down stroke
+    if (overlay == "purr") {
+        // Helper function for better visualisation of stroke maped to a clock. Only vibrating briefly between 5 & 7
+        if (phaseFallsBetweenClockHours(phase,5,7)) {
+            // Vibration calculation within the specified phase range
+            float vibrationAmplitude = 100;
+            float maxFrequency = 50;
+            float minFrequency = 5;
+            float currentFrequency = minFrequency; // Default to minFrequency
+
+            // Create purr effect by reducing frequency.
+            // Helper function interpolates 2 values between clock positions 
+            currentFrequency = interpolateValuesAcrossClockTimes(phase,5,7,minFrequency,maxFrequency);
+
+            // Return the vibration wave
+            return calculateVibrationWave(vibrationAmplitude, currentFrequency, timeElapsed);
+        }
+    }
+
+    return 0; // No vibration outside the specified phase range, or for unknown overlay
+}
+
+//********************************************************
+//********************** Get & Reset *********************
+//********************************************************
+
 int NCMMotion::getLoopCount() {
   return loopCount;
 }
@@ -110,6 +164,10 @@ void NCMMotion::resetLoopCounter() {
 void NCMMotion::resetFirstCall() {
   isFirstCall = true;
 }
+
+//**************************************************************
+//********************** Frequency Helpers *********************
+//**************************************************************
 
 float NCMMotion::mapSpeedToFrequency(int speed) {
     if (speed <= 0) {
@@ -138,3 +196,61 @@ void NCMMotion::setMaxFrequency(float maxHz) {
         maxFrequency = maxHz;
     }
 }
+
+//**************************************************************
+//********************** Vibration Helpers *********************
+//**************************************************************
+
+float NCMMotion::calculateVibrationWave(float vibrationAmplitude, float vibrationFrequency, float timeElapsed) {
+    // Calculate the phase increment for the vibration
+    float vibrationPhaseIncrement = 2 * PI * vibrationFrequency * timeElapsed;
+    static float vibrationPhase = 0;
+    vibrationPhase += vibrationPhaseIncrement;
+    if (vibrationPhase > 2 * PI) {
+        vibrationPhase -= 2 * PI; // Normalize phase
+    }
+    return vibrationAmplitude * sin(vibrationPhase);
+}
+
+// This function helps visualise the stroke phase as the hours on a clock where 6 is the bottom of each stroke
+bool NCMMotion::phaseFallsBetweenClockHours(float radian_value, int start_clock, int end_clock) {
+    if (start_clock == end_clock) {
+        return true;
+    }
+    float start_rad = convertHourToRadians(start_clock);
+    float end_rad = convertHourToRadians(end_clock);
+    if (start_rad <= end_rad) {
+        return radian_value >= start_rad && radian_value <= end_rad;
+    } else {
+        return radian_value >= start_rad || radian_value <= end_rad;
+    }
+}
+
+float NCMMotion::convertHourToRadians(int hour_on_a_clock) {
+    return (2 * PI / 12) * ((hour_on_a_clock - 9) % 12);
+}
+
+float NCMMotion::interpolateValuesAcrossClockTimes(float phase, int start_hour, int end_hour, float minValue, float maxValue) {
+    float start_rad = normalizeRadians(convertHourToRadians(start_hour));
+    float end_rad = normalizeRadians(convertHourToRadians(end_hour));
+    phase = normalizeRadians(phase);
+    // Adjust for wrap-around
+    if (start_rad > end_rad) {
+        if (phase < end_rad) phase += 2 * PI;
+        end_rad += 2 * PI;
+    }
+    float interpolationFactor = (phase - start_rad) / (end_rad - start_rad);
+    // Apply interpolation factor to interpolate between min and max values supplied
+    return maxValue - interpolationFactor * (maxValue - minValue);
+}
+
+float NCMMotion::normalizeRadians(float radians) {
+    while (radians < 0) radians += 2 * PI;
+    while (radians >= 2 * PI) radians -= 2 * PI;
+    return radians;
+}
+
+
+//************************************************
+//********************** End *********************
+//************************************************
