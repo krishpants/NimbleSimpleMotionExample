@@ -20,6 +20,7 @@ void NCMMotion::begin() {
 //************************************************************
 
 void NCMMotion::setMinPosition(long position) {
+  Serial.println("Min Pos Set");
   targetMinPosition = constrain(position, -1000, 1000);
 }
 
@@ -117,6 +118,7 @@ float NCMMotion::calculateVibrationOverlay(const String& overlay, float phase, f
     // A more advanced modulated purr at the end of the down stroke
     if (overlay == "purr") {
         // Helper function for better visualisation of stroke maped to a clock. Only vibrating briefly between 5 & 7
+        bool should_run = phaseFallsBetweenClockHours(phase,5,7);
         if (phaseFallsBetweenClockHours(phase,5,7)) {
             // Vibration calculation within the specified phase range
             float vibrationAmplitude = 100;
@@ -226,9 +228,13 @@ bool NCMMotion::phaseFallsBetweenClockHours(float radian_value, int start_clock,
     }
 }
 
+// float NCMMotion::convertHourToRadians(int hour_on_a_clock) {
+//     return (2 * PI / 12) * ((hour_on_a_clock - 9) % 12);
+// }
 float NCMMotion::convertHourToRadians(int hour_on_a_clock) {
-    return (2 * PI / 12) * ((hour_on_a_clock - 9) % 12);
+    return (2 * PI / 12) * ((hour_on_a_clock - 9 + 12) % 12);
 }
+
 
 float NCMMotion::interpolateValuesAcrossClockTimes(float phase, int start_hour, int end_hour, float minValue, float maxValue) {
     float start_rad = normalizeRadians(convertHourToRadians(start_hour));

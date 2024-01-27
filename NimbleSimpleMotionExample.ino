@@ -2,6 +2,7 @@
 #include "NCMMotion.h"
 // This goes last or will error
 #include "nimbleCon.h"
+#include <Arduino.h>
 
 // Make an instance of Widget's motion lib
 NCMMotion motion;
@@ -15,6 +16,8 @@ void setup() {
   // Set in hz of the max speed value of 100(%)
   // wave freqncy will be then mapped from 0 - MAX hz, for values 0-100
   motion.setMaxFrequency(5);//HZ
+  Serial.begin(115200);
+  delay(500);
 }
 
 
@@ -94,17 +97,18 @@ void runMainOperation() {
       // Here is where the motion is generated.
       // generateSineWave() constantly updates the position in a sin wave, this is then extracted in sendValuesToNimble() and sent to the actuator
       // Check if the loop count is even or odd
-      if (motion.getLoopCount() % 2 == 0) {
-          // On even loop counts, apply the "purr" texture overlay
-          motion.generateSineWave("purr");
-      } else {
-          // On odd loop counts, don't apply any overlay
-          motion.generateSineWave();
-      }
+      // if (motion.getLoopCount() % 2 == 0) {
+      //     // On even loop counts, apply the "purr" texture overlay
+      //     motion.generateSineWave("purr");
+      // } else {
+      //     // On odd loop counts, don't apply any overlay
+      //     motion.generateSineWave();
+      // }
+      motion.generateSineWave("purr");
       // The library keeps a loop count that increments at the bottom of every stroke.
       // In this example we wait until the counter gets to 20 and then move to the next step.
       // because the counter updates at the bottom of the stroke, moving on as soon as it changes stopped the unit in an optimal posiiton to prevent fall off.
-      if (motion.getLoopCount() > 20){
+      if (motion.getLoopCount() > 5){
         runningStage ++;
       }
       break;
@@ -226,6 +230,9 @@ void sendValuesToNimble(){
   // this function sets values to the actuator construct...
   readFromPend(); // Used to get pendant values like airIn so they can be passed through
   actuator.forceCommand = 1023; // Leave it as it is normaly
+  if (runningStage == 0){
+    actuator.forceCommand = 300;
+  }
   actuator.positionCommand = motion.getPositionCommand(); // Get postion from motion library
   actuator.airIn = pendant.airIn; // Pass thhrough pendant values
   actuator.airOut = pendant.airOut; // Pass thhrough pendant values
